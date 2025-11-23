@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useTheme } from '@/context/ThemeContext';
-import { MoonIcon, SunIcon, LogInIcon } from 'lucide-react';
+import { MoonIcon, SunIcon, LogInIcon, UserIcon } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 export default function Navbar() {
@@ -78,10 +78,12 @@ export default function Navbar() {
           >
             {theme === 'light' ? <MoonIcon size={20} /> : <SunIcon size={20} />}
           </button>
-          <button className="bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors flex items-center justify-center">
-            <LogInIcon size={20} className="sm:hidden" />
-            <span className="hidden sm:block">Login</span>
-          </button>
+          <Link href="/login">
+            <button className="bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors flex items-center justify-center">
+              <LogInIcon size={20} className="sm:hidden" />
+              <span className="hidden sm:block">Login</span>
+            </button>
+          </Link>
         </div>
       </div>
     </nav>
