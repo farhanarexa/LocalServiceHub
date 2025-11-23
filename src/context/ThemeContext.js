@@ -5,10 +5,12 @@ import { createContext, useContext, useEffect, useState } from 'react';
 const ThemeContext = createContext();
 
 export function ThemeProvider({ children }) {
+  // Initialize theme state to 'light' initially
   const [theme, setTheme] = useState('light');
 
   useEffect(() => {
-    // Check for saved theme in localStorage, otherwise use system preference
+    // Check for saved theme in localStorage on initial client load
+    // This happens after component mounts
     const savedTheme = localStorage.getItem('theme') || 'light';
     setTheme(savedTheme);
   }, []);
