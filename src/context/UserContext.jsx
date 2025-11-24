@@ -94,6 +94,117 @@ export function UserProvider({ children }) {
     }
   };
 
+  // Get user profile
+  const getProfile = async (userId) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (error && error.code !== 'PGRST116') { // PGRST116 means no rows returned
+        throw error;
+      }
+
+      return { data, error: null };
+    } catch (error) {
+      console.error('Get profile error:', error);
+      return { data: null, error: error.message };
+    }
+  };
+
+  // Update user profile
+  const updateProfile = async (userId, profileData) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .upsert({
+          id: userId,
+          ...profileData,
+          updated_at: new Date().toISOString()
+        }, { onConflict: ['id'] });
+
+      if (error) throw error;
+
+      return { data, error: null };
+    } catch (error) {
+      console.error('Update profile error:', error);
+      return { data: null, error: error.message };
+    }
+  };
+
+  // Create a new service
+  const createService = async (serviceData) => {
+    try {
+      const { data, error } = await supabase
+        .from('services')
+        .insert([serviceData])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      return { data, error: null };
+    } catch (error) {
+      console.error('Create service error:', error);
+      return { data: null, error: error.message };
+    }
+  };
+
+  // Get user's services
+  const getUserServices = async (userId) => {
+    try {
+      const { data, error } = await supabase
+        .from('services')
+        .select('*')
+        .eq('user_id', userId);
+
+      if (error) throw error;
+
+      return { data, error: null };
+    } catch (error) {
+      console.error('Get user services error:', error);
+      return { data: null, error: error.message };
+    }
+  };
+
+  // Update a service
+  const updateService = async (serviceId, serviceData) => {
+    try {
+      const { data, error } = await supabase
+        .from('services')
+        .update(serviceData)
+        .eq('id', serviceId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      return { data, error: null };
+    } catch (error) {
+      console.error('Update service error:', error);
+      return { data: null, error: error.message };
+    }
+  };
+
+  // Delete a service
+  const deleteService = async (serviceId) => {
+    try {
+      const { error } = await supabase
+        .from('services')
+        .delete()
+        .eq('id', serviceId);
+
+      if (error) throw error;
+
+      return { error: null };
+    } catch (error) {
+      console.error('Delete service error:', error);
+      return { error: error.message };
+    }
+  };
+
   const value = {
     user,
     loading,
@@ -101,6 +212,12 @@ export function UserProvider({ children }) {
     register,
     googleLogin,
     logout,
+    getProfile,
+    updateProfile,
+    createService,
+    getUserServices,
+    updateService,
+    deleteService,
   };
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;
