@@ -2,27 +2,21 @@
 
 import { useUser } from '@/context/UserContext';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 
 export default function PrivateRoute({ children }) {
   const { user, loading } = useUser();
   const router = useRouter();
-  const [showContent, setShowContent] = useState(false);
 
   useEffect(() => {
-    if (!loading) {
-      if (!user) {
-        // User is not authenticated, redirect to login
-        router.push('/login');
-      } else {
-        // User is authenticated, show the content
-        setShowContent(true);
-      }
+    if (!loading && !user) {
+      // User is not authenticated, redirect to login
+      router.push('/login');
     }
   }, [user, loading, router]);
 
-  // Show nothing while checking authentication status
-  if (loading || !showContent) {
+  // Show loading while checking authentication status or when user is not authenticated
+  if (loading || !user) {
     return (
       <div className="min-h-screen bg-background dark:bg-background flex items-center justify-center">
         <div className="text-center">
