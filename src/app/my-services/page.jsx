@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useUser } from '@/context/UserContext';
 import { useRouter } from 'next/navigation';
 import { Plus, Edit3, Eye, Trash2, Calendar, MapPin, Star, ExternalLink } from 'lucide-react';
+import PrivateRoute from '@/components/PrivateRoute';
 
 // Placeholder data - in a real app, this would come from Supabase
 const placeholderServices = [
@@ -41,15 +42,20 @@ const placeholderServices = [
 ];
 
 export default function MyServicesPage() {
+  return (
+    <PrivateRoute>
+      <MyServicesContent />
+    </PrivateRoute>
+  );
+}
+
+function MyServicesContent() {
   const { user, loading } = useUser();
-  const router = useRouter();
   const [services, setServices] = useState([]);
   const [loadingServices, setLoadingServices] = useState(true);
 
   useEffect(() => {
-    if (!user && !loading) {
-      router.push('/login');
-    } else if (user) {
+    if (user) {
       // In a real app, fetch services from Supabase
       // For now, using placeholder data
       setTimeout(() => {
@@ -57,7 +63,7 @@ export default function MyServicesPage() {
         setLoadingServices(false);
       }, 500);
     }
-  }, [user, loading, router]);
+  }, [user]);
 
   const handleDeleteService = (serviceId) => {
     if (confirm('Are you sure you want to delete this service?')) {
@@ -91,10 +97,6 @@ export default function MyServicesPage() {
     );
   }
 
-  if (!user) {
-    return null; // Redirect is handled in useEffect
-  }
-
   return (
     <div className="min-h-screen bg-background dark:bg-background">
       <div className="max-w-7xl mx-auto px-6 py-12">
@@ -108,7 +110,7 @@ export default function MyServicesPage() {
             <h2 className="text-xl font-semibold">Your Services</h2>
             <p className="text-muted-foreground">{services.length} service{services.length !== 1 ? 's' : ''} listed</p>
           </div>
-          
+
           <Link href="/services/create" className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors">
             <Plus className="h-4 w-4" /> Add New Service
           </Link>
@@ -133,26 +135,26 @@ export default function MyServicesPage() {
                   <div className="flex justify-between items-start mb-3">
                     <h3 className="text-xl font-semibold">{service.name}</h3>
                     <span className={`text-xs font-medium px-2 py-1 rounded ${
-                      service.status === 'active' 
-                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
+                      service.status === 'active'
+                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
                         : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
                     }`}>
                       {service.status}
                     </span>
                   </div>
-                  
+
                   <p className="text-muted-foreground text-sm mb-4">{service.description}</p>
-                  
+
                   <div className="flex items-center text-sm text-muted-foreground mb-2">
                     <MapPin className="h-4 w-4 mr-1" />
                     <span>{service.category}</span>
                   </div>
-                  
+
                   <div className="flex items-center text-sm text-muted-foreground mb-4">
                     <Calendar className="h-4 w-4 mr-1" />
                     <span>Added {new Date(service.createdAt).toLocaleDateString()}</span>
                   </div>
-                  
+
                   <div className="flex items-center justify-between">
                     <span className="text-lg font-bold text-primary">{service.price}</span>
                     <div className="flex items-center">
@@ -161,9 +163,9 @@ export default function MyServicesPage() {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="px-6 py-4 bg-muted border-t border-border flex justify-between">
-                  <Link 
+                  <Link
                     href={`/service/${service.id}`}
                     className="flex items-center text-primary hover:text-primary/80"
                   >
@@ -173,7 +175,7 @@ export default function MyServicesPage() {
                     <button className="text-muted-foreground hover:text-foreground">
                       <Edit3 className="h-4 w-4" />
                     </button>
-                    <button 
+                    <button
                       onClick={() => handleDeleteService(service.id)}
                       className="text-muted-foreground hover:text-destructive"
                     >

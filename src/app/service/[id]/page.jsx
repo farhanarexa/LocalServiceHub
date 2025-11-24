@@ -2,6 +2,7 @@
 
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import PrivateRoute from '@/components/PrivateRoute';
 
 // Full mock data (all 6 services)
 const services = [
@@ -91,8 +92,16 @@ const services = [
   }
 ];
 
-// This is the ONLY correct way in Next.js 16 + Turbopack
 export default async function ServiceDetailPage({ params }) {
+  return (
+    <PrivateRoute>
+      <ServiceDetailContent params={params} />
+    </PrivateRoute>
+  );
+}
+
+// This is the ONLY correct way in Next.js 16 + Turbopack
+async function ServiceDetailContent({ params }) {
   const { id } = await params;                    // ← await the Promise!
   const serviceId = Number(id);
 

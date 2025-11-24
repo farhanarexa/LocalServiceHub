@@ -4,8 +4,17 @@ import { useState, useEffect } from 'react';
 import { useUser } from '@/context/UserContext';
 import { useRouter } from 'next/navigation';
 import { User, Mail, Calendar, MapPin, Phone, Edit3, Save, X, Loader2, Camera } from 'lucide-react';
+import PrivateRoute from '@/components/PrivateRoute';
 
 export default function ProfilePage() {
+  return (
+    <PrivateRoute>
+      <ProfileContent />
+    </PrivateRoute>
+  );
+}
+
+function ProfileContent() {
   const { user, loading: authLoading, getProfile, updateProfile, uploadProfileImage } = useUser();
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
@@ -169,11 +178,6 @@ export default function ProfilePage() {
         </div>
       </div>
     );
-  }
-
-  if (!user) {
-    router.push('/login');
-    return null;
   }
 
   return (
