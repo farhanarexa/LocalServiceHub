@@ -134,6 +134,52 @@ export function UserProvider({ children }) {
     }
   };
 
+  // Upload profile image
+  const uploadProfileImage = async (userId, file) => {
+    try {
+      // Generate a unique filename using the user ID and timestamp
+      const fileName = `${userId}/${Date.now()}_${file.name}`;
+
+      const { data, error } = await supabase
+        .storage
+        .from('profile-images')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
+
+      if (error) throw error;
+
+      // Get the public URL of the uploaded image
+      const { data: { publicUrl } } = supabase
+        .storage
+        .from('profile-images')
+        .getPublicUrl(fileName);
+
+      return { publicUrl, error: null };
+    } catch (error) {
+      console.error('Upload profile image error:', error);
+      return { publicUrl: null, error: error.message };
+    }
+  };
+
+  // Delete profile image
+  const deleteProfileImage = async (filePath) => {
+    try {
+      const { error } = await supabase
+        .storage
+        .from('profile-images')
+        .remove([filePath]);
+
+      if (error) throw error;
+
+      return { error: null };
+    } catch (error) {
+      console.error('Delete profile image error:', error);
+      return { error: error.message };
+    }
+  };
+
   // Create a new service
   const createService = async (serviceData) => {
     try {
@@ -214,6 +260,8 @@ export function UserProvider({ children }) {
     logout,
     getProfile,
     updateProfile,
+    uploadProfileImage,
+    deleteProfileImage,
     createService,
     getUserServices,
     updateService,

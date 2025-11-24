@@ -3,10 +3,10 @@
 import { useState, useEffect } from 'react';
 import { useUser } from '@/context/UserContext';
 import { useRouter } from 'next/navigation';
-import { User, Mail, Calendar, MapPin, Phone, Edit3, Save, X, Loader2 } from 'lucide-react';
+import { User, Mail, Calendar, MapPin, Phone, Edit3, Save, X, Loader2, Camera } from 'lucide-react';
 
 export default function ProfilePage() {
-  const { user, loading: authLoading, getProfile, updateProfile } = useUser();
+  const { user, loading: authLoading, getProfile, updateProfile, uploadProfileImage } = useUser();
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true);
@@ -16,11 +16,13 @@ export default function ProfilePage() {
     phone: '',
     location: '',
     bio: '',
+    avatar_url: '',
     joinedDate: ''
   });
   const [tempData, setTempData] = useState({ ...profileData });
   const [error, setError] = useState('');
   const [saveLoading, setSaveLoading] = useState(false);
+  const [avatarLoading, setAvatarLoading] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -40,6 +42,7 @@ export default function ProfilePage() {
               phone: data.phone || user.user_metadata?.phone || '',
               location: data.location || user.user_metadata?.location || '',
               bio: data.bio || user.user_metadata?.bio || '',
+              avatar_url: data.avatar_url || '',
               joinedDate: user.created_at ? new Date(user.created_at).toLocaleDateString() : ''
             };
             setProfileData(profile);
@@ -52,6 +55,7 @@ export default function ProfilePage() {
               phone: user.user_metadata?.phone || '',
               location: user.user_metadata?.location || '',
               bio: user.user_metadata?.bio || '',
+              avatar_url: '',
               joinedDate: user.created_at ? new Date(user.created_at).toLocaleDateString() : ''
             };
             setProfileData(profile);
@@ -91,6 +95,7 @@ export default function ProfilePage() {
         phone: tempData.phone,
         location: tempData.location,
         bio: tempData.bio,
+        avatar_url: tempData.avatar_url,
       });
 
       if (error) throw new Error(error);
@@ -103,6 +108,40 @@ export default function ProfilePage() {
       setError('Failed to save profile data');
     } finally {
       setSaveLoading(false);
+    }
+  };
+
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setError('Please select an image file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setError('File size exceeds 5MB limit');
+      return;
+    }
+
+    setAvatarLoading(true);
+    setError('');
+
+    try {
+      const { publicUrl, error } = await uploadProfileImage(user.id, file);
+      if (error) throw new Error(error);
+
+      // Update both the temp data and the current profile data
+      setTempData(prev => ({ ...prev, avatar_url: publicUrl }));
+      setProfileData(prev => ({ ...prev, avatar_url: publicUrl }));
+    } catch (err) {
+      console.error('Error uploading avatar:', err);
+      setError('Failed to upload profile image');
+    } finally {
+      setAvatarLoading(false);
     }
   };
 
@@ -155,10 +194,34 @@ export default function ProfilePage() {
           {/* Profile Card */}
           <div className="bg-card p-6 rounded-xl border border-border shadow-sm">
             <div className="flex flex-col items-center text-center">
-              <div className="bg-primary w-24 h-24 rounded-full flex items-center justify-center mb-4">
-                <User className="text-primary-foreground h-12 w-12" />
+              <div className="relative">
+                {profileData.avatar_url ? (
+                  <img
+                    src={profileData.avatar_url}
+                    alt="Profile"
+                    className="w-24 h-24 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="bg-primary w-24 h-24 rounded-full flex items-center justify-center">
+                    <User className="text-primary-foreground h-12 w-12" />
+                  </div>
+                )}
+
+                {isEditing && (
+                  <label className="absolute bottom-0 right-0 bg-primary p-2 rounded-full cursor-pointer">
+                    <Camera className="h-4 w-4 text-primary-foreground" />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleAvatarChange}
+                      className="hidden"
+                      disabled={avatarLoading}
+                    />
+                  </label>
+                )}
               </div>
-              <h2 className="text-xl font-semibold">{profileData.name}</h2>
+
+              <h2 className="text-xl font-semibold mt-4">{profileData.name}</h2>
               <p className="text-muted-foreground text-sm">{profileData.email}</p>
 
               <div className="mt-4 text-left w-full pt-4">
