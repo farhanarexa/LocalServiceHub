@@ -2,30 +2,81 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useTheme } from '@/context/ThemeContext';
-import { Mail, Lock, User, ArrowLeft } from 'lucide-react';
+import { useUser } from '@/context/UserContext';
+import { Mail, Lock, User, ArrowLeft, Loader2 } from 'lucide-react';
 
 export default function Register() {
   const { theme } = useTheme();
+  const { register, googleLogin } = useUser();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [acceptTerms, setAcceptTerms] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const router = useRouter();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsLoading(true);
+    setError('');
+
     if (password !== confirmPassword) {
-      alert('Passwords do not match');
+      setError('Passwords do not match');
+      setIsLoading(false);
       return;
     }
-    console.log('Register attempt with:', { name, email, password, acceptTerms });
-    // Handle registration logic here
+
+    if (!acceptTerms) {
+      setError('You must agree to the Terms of Service and Privacy Policy');
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const { data, error } = await register(email, password, {
+        name: name,
+        email: email
+      });
+
+      if (error) {
+        setError(error);
+      } else {
+        // Registration successful, redirect to home or show success message
+        if (data?.user) {
+          // If email confirmation isn't required, redirect to home
+          // Otherwise, show message to check email
+          if (!data?.user?.email_confirmed_at) {
+            // Email verification required - show message
+            alert('Please check your email to confirm your account');
+            router.push('/login');
+          } else {
+            // No email verification required - redirect to home
+            router.push('/');
+            router.refresh();
+          }
+        } else {
+          // Assume success and redirect to login
+          router.push('/login');
+        }
+      }
+    } catch (err) {
+      setError(err.message || 'An error occurred during registration');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleGoogleRegister = () => {
-    console.log('Google register clicked');
-    // Handle Google registration logic here
+  const handleGoogleRegister = async () => {
+    try {
+      await googleLogin();
+      // The googleLogin function handles the redirect automatically
+    } catch (err) {
+      setError(err.message || 'An error occurred during Google registration');
+    }
   };
 
   return (
@@ -47,6 +98,12 @@ export default function Register() {
             <p className="text-muted-foreground mt-2">Join us today to get started</p>
           </div>
 
+          {error && (
+            <div className="mb-6 p-3 bg-destructive/10 text-destructive rounded-lg text-center">
+              {error}
+            </div>
+          )}
+
           <div className="bg-card rounded-2xl shadow-lg p-8 border border-border">
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
@@ -63,6 +120,7 @@ export default function Register() {
                     className="w-full pl-10 pr-4 py-3 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition"
                     placeholder="John Doe"
                     required
+                    disabled={isLoading}
                   />
                 </div>
               </div>
@@ -81,6 +139,7 @@ export default function Register() {
                     className="w-full pl-10 pr-4 py-3 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition"
                     placeholder="you@example.com"
                     required
+                    disabled={isLoading}
                   />
                 </div>
               </div>
@@ -99,6 +158,7 @@ export default function Register() {
                     className="w-full pl-10 pr-4 py-3 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition"
                     placeholder="••••••••"
                     required
+                    disabled={isLoading}
                   />
                 </div>
               </div>
@@ -117,6 +177,7 @@ export default function Register() {
                     className="w-full pl-10 pr-4 py-3 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition"
                     placeholder="••••••••"
                     required
+                    disabled={isLoading}
                   />
                 </div>
               </div>
@@ -129,6 +190,7 @@ export default function Register() {
                   onChange={(e) => setAcceptTerms(e.target.checked)}
                   className="h-4 w-4 text-primary focus:ring-primary border-border rounded"
                   required
+                  disabled={isLoading}
                 />
                 <label htmlFor="terms" className="ml-2 block text-sm">
                   I agree to the <Link href="/terms" className="text-primary hover:text-primary/80 transition-colors">Terms of Service</Link> and <Link href="/privacy" className="text-primary hover:text-primary/80 transition-colors">Privacy Policy</Link>
@@ -137,9 +199,17 @@ export default function Register() {
 
               <button
                 type="submit"
-                className="w-full bg-primary text-primary-foreground py-3 rounded-lg hover:bg-primary/90 transition-colors font-medium"
+                className="w-full bg-primary text-primary-foreground py-3 rounded-lg hover:bg-primary/90 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                disabled={isLoading}
               >
-                Create Account
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating account...
+                  </>
+                ) : (
+                  'Create Account'
+                )}
               </button>
             </form>
 
@@ -154,7 +224,8 @@ export default function Register() {
 
             <button
               onClick={handleGoogleRegister}
-              className="w-full flex items-center justify-center gap-3 bg-background border border-border py-3 rounded-lg hover:bg-accent transition-colors"
+              className="w-full flex items-center justify-center gap-3 bg-background border border-border py-3 rounded-lg hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isLoading}
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none">
                 <path d="M22.56 12.25C22.56 11.47 22.49 10.72 22.36 10H12V14.26H17.92C17.66 15.63 16.88 16.79 15.71 17.57V20.34H19.28C21.36 18.42 22.56 15.6 22.56 12.25Z" fill="#4285F4"/>

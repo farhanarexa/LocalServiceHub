@@ -2,24 +2,50 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useTheme } from '@/context/ThemeContext';
-import { Mail, Lock, UserCircle, ArrowLeft } from 'lucide-react';
+import { useUser } from '@/context/UserContext';
+import { Mail, Lock, UserCircle, ArrowLeft, Loader2 } from 'lucide-react';
 
 export default function Login() {
   const { theme } = useTheme();
+  const { login, googleLogin } = useUser();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const router = useRouter();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Login attempt with:', { email, password, rememberMe });
-    // Handle login logic here
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const { data, error } = await login(email, password);
+
+      if (error) {
+        setError(error);
+      } else {
+        // Login successful, redirect to home or previous page
+        router.push('/');
+        router.refresh();
+      }
+    } catch (err) {
+      setError(err.message || 'An error occurred during login');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleGoogleLogin = () => {
-    console.log('Google login clicked');
-    // Handle Google login logic here
+  const handleGoogleLogin = async () => {
+    try {
+      await googleLogin();
+      // The googleLogin function handles the redirect automatically
+    } catch (err) {
+      setError(err.message || 'An error occurred during Google login');
+    }
   };
 
   return (
@@ -41,6 +67,12 @@ export default function Login() {
             <p className="text-muted-foreground mt-2">Sign in to your account to continue</p>
           </div>
 
+          {error && (
+            <div className="mb-6 p-3 bg-destructive/10 text-destructive rounded-lg text-center">
+              {error}
+            </div>
+          )}
+
           <div className="bg-card rounded-2xl shadow-lg p-8 border border-border">
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
@@ -57,6 +89,7 @@ export default function Login() {
                     className="w-full pl-10 pr-4 py-3 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition"
                     placeholder="you@example.com"
                     required
+                    disabled={isLoading}
                   />
                 </div>
               </div>
@@ -80,6 +113,7 @@ export default function Login() {
                     className="w-full pl-10 pr-4 py-3 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition"
                     placeholder="••••••••"
                     required
+                    disabled={isLoading}
                   />
                 </div>
               </div>
@@ -91,6 +125,7 @@ export default function Login() {
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
                   className="h-4 w-4 text-primary focus:ring-primary border-border rounded"
+                  disabled={isLoading}
                 />
                 <label htmlFor="remember" className="ml-2 block text-sm">
                   Remember me
@@ -99,9 +134,17 @@ export default function Login() {
 
               <button
                 type="submit"
-                className="w-full bg-primary text-primary-foreground py-3 rounded-lg hover:bg-primary/90 transition-colors font-medium"
+                className="w-full bg-primary text-primary-foreground py-3 rounded-lg hover:bg-primary/90 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                disabled={isLoading}
               >
-                Sign In
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Signing in...
+                  </>
+                ) : (
+                  'Sign In'
+                )}
               </button>
             </form>
 
@@ -116,7 +159,8 @@ export default function Login() {
 
             <button
               onClick={handleGoogleLogin}
-              className="w-full flex items-center justify-center gap-3 bg-background border border-border py-3 rounded-lg hover:bg-accent transition-colors"
+              className="w-full flex items-center justify-center gap-3 bg-background border border-border py-3 rounded-lg hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isLoading}
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none">
                 <path d="M22.56 12.25C22.56 11.47 22.49 10.72 22.36 10H12V14.26H17.92C17.66 15.63 16.88 16.79 15.71 17.57V20.34H19.28C21.36 18.42 22.56 15.6 22.56 12.25Z" fill="#4285F4"/>

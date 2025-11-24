@@ -2,13 +2,16 @@
 
 import Link from 'next/link';
 import { useTheme } from '@/context/ThemeContext';
-import { MoonIcon, SunIcon, LogInIcon, UserIcon } from 'lucide-react';
+import { useUser } from '@/context/UserContext';
+import { MoonIcon, SunIcon, LogInIcon, UserIcon, LogOutIcon } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 export default function Navbar() {
   const { theme, toggleTheme } = useTheme();
+  const { user, loading, logout } = useUser();
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -47,6 +50,27 @@ export default function Navbar() {
     };
   }, [lastScrollY]);
 
+  const handleLogout = async () => {
+    await logout();
+    setIsUserMenuOpen(false);
+  };
+
+  if (loading) {
+    return (
+      <nav className="fixed top-0 left-0 right-0 z-50 h-16 bg-background">
+        <div className="max-w-7xl mx-auto h-full px-6 flex items-center justify-between w-full">
+          <div className="flex items-center space-x-2">
+            <div className="bg-primary w-10 h-10 rounded-lg"></div>
+            <span className="text-2xl font-bold hidden sm:block">LocalServiceHub</span>
+          </div>
+          <div className="flex items-center space-x-4">
+            <div className="h-10 w-24 bg-muted rounded-lg animate-pulse"></div>
+          </div>
+        </div>
+      </nav>
+    );
+  }
+
   return (
     <nav
       className={`fixed top-0 left-0 right-0 z-50 h-16 bg-background transition-transform duration-300 ${
@@ -69,7 +93,7 @@ export default function Navbar() {
           <Link href="/contact" className="hover:text-primary transition-colors">Contact</Link>
         </div>
 
-        {/* Right Section: Theme Toggle and Login */}
+        {/* Right Section: Theme Toggle and User Controls */}
         <div className="flex items-center space-x-4">
           <button
             onClick={toggleTheme}
@@ -78,12 +102,53 @@ export default function Navbar() {
           >
             {theme === 'light' ? <MoonIcon size={20} /> : <SunIcon size={20} />}
           </button>
-          <Link href="/login">
-            <button className="bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors flex items-center justify-center">
-              <LogInIcon size={20} className="sm:hidden" />
-              <span className="hidden sm:block">Login</span>
-            </button>
-          </Link>
+
+          {user ? (
+            // User is logged in - show user menu
+            <div className="relative">
+              <button
+                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                className="flex items-center space-x-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
+              >
+                <UserIcon size={20} />
+                <span className="hidden sm:block">{user.email?.split('@')[0]}</span>
+              </button>
+
+              {isUserMenuOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-card rounded-lg shadow-lg border border-border py-2 z-50">
+                  <Link
+                    href="/profile"
+                    className="block px-4 py-2 hover:bg-accent transition-colors"
+                    onClick={() => setIsUserMenuOpen(false)}
+                  >
+                    Profile
+                  </Link>
+                  <Link
+                    href="/my-services"
+                    className="block px-4 py-2 hover:bg-accent transition-colors"
+                    onClick={() => setIsUserMenuOpen(false)}
+                  >
+                    My Services
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full text-left px-4 py-2 hover:bg-destructive/10 text-destructive transition-colors flex items-center"
+                  >
+                    <LogOutIcon size={16} className="mr-2" />
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            // User is not logged in - show login button
+            <Link href="/login">
+              <button className="bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors flex items-center justify-center">
+                <LogInIcon size={20} className="sm:hidden" />
+                <span className="hidden sm:block">Login</span>
+              </button>
+            </Link>
+          )}
         </div>
       </div>
     </nav>
