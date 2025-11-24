@@ -14,14 +14,67 @@ export function UserProvider({ children }) {
     // Get initial session
     const checkInitialSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user || null);
+      const authUser = session?.user || null;
+      setUser(authUser);
       setLoading(false);
+
+      // If user is authenticated, fetch their profile
+      if (authUser) {
+        try {
+          const { data: profileData, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', authUser.id)
+            .single();
+
+          if (error && error.code !== 'PGRST116') { // PGRST116 means no rows returned
+            console.error('Error fetching profile:', error);
+          } else if (profileData) {
+            // Update user object with profile data
+            setUser({
+              ...authUser,
+              user_metadata: {
+                ...authUser.user_metadata,
+                ...profileData
+              }
+            });
+          }
+        } catch (err) {
+          console.error('Error in useEffect:', err);
+        }
+      }
 
       // Listen for auth changes
       const { data: { subscription } } = await supabase.auth.onAuthStateChange(
-        (_event, session) => {
-          setUser(session?.user || null);
-          setLoading(false);
+        async (_event, session) => {
+          const authUser = session?.user || null;
+          setUser(authUser);
+
+          // If user is authenticated, fetch their profile
+          if (authUser) {
+            try {
+              const { data: profileData, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', authUser.id)
+                .single();
+
+              if (error && error.code !== 'PGRST116') { // PGRST116 means no rows returned
+                console.error('Error fetching profile:', error);
+              } else if (profileData) {
+                // Update user object with profile data
+                setUser({
+                  ...authUser,
+                  user_metadata: {
+                    ...authUser.user_metadata,
+                    ...profileData
+                  }
+                });
+              }
+            } catch (err) {
+              console.error('Error in auth state change:', err);
+            }
+          }
         }
       );
 

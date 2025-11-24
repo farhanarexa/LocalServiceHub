@@ -3,8 +3,9 @@
 import Link from 'next/link';
 import { useTheme } from '@/context/ThemeContext';
 import { useUser } from '@/context/UserContext';
-import { MoonIcon, SunIcon, LogInIcon, UserIcon, LogOutIcon } from 'lucide-react';
+import { MoonIcon, SunIcon, LogInIcon, User, LogOutIcon } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 
 export default function Navbar() {
   const { theme, toggleTheme } = useTheme();
@@ -49,11 +50,6 @@ export default function Navbar() {
       window.removeEventListener('scroll', throttledHandleScroll);
     };
   }, [lastScrollY]);
-
-  const handleLogout = async () => {
-    await logout();
-    setIsUserMenuOpen(false);
-  };
 
   if (loading) {
     return (
@@ -104,14 +100,28 @@ export default function Navbar() {
           </button>
 
           {user ? (
-            // User is logged in - show user menu
+            // User is logged in - show user avatar with dropdown
             <div className="relative">
               <button
                 onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                className="flex items-center space-x-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
+                className="flex items-center space-x-2  text-primary-foreground px-3 py-2 rounded-lg hover:bg-primary/20 transition-colors"
               >
-                <UserIcon size={20} />
-                <span className="hidden sm:block">{user.email?.split('@')[0]}</span>
+                {/* Show user's profile image if available, otherwise show default avatar */}
+                {user.user_metadata?.avatar_url ? (
+                  <Image
+                    src={user.user_metadata.avatar_url}
+                    alt="Profile"
+                    width={40}
+                    height={40}
+                    className="w-10 h-10 rounded-full object-cover"
+                    unoptimized // Since this is from Supabase storage, we don't want Next.js to optimize it
+                  />
+                ) : (
+                  <div className="bg-primary-foreground text-primary w-8 h-8 rounded-full flex items-center justify-center">
+                    <User size={16} />
+                  </div>
+                )}
+                {/* <span className="hidden sm:block">{user.email?.split('@')[0]}</span> */}
               </button>
 
               {isUserMenuOpen && (
@@ -131,7 +141,10 @@ export default function Navbar() {
                     My Services
                   </Link>
                   <button
-                    onClick={handleLogout}
+                    onClick={async () => {
+                      await logout();
+                      setIsUserMenuOpen(false);
+                    }}
                     className="w-full text-left px-4 py-2 hover:bg-destructive/10 text-destructive transition-colors flex items-center"
                   >
                     <LogOutIcon size={16} className="mr-2" />
