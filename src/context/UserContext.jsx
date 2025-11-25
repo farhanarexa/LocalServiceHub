@@ -236,9 +236,26 @@ export function UserProvider({ children }) {
   // Create a new service
   const createService = async (serviceData) => {
     try {
+      // If there's an image file to upload, do that first
+      let finalServiceData = { ...serviceData };
+
+      if (serviceData.image_file) {
+        const { publicUrl, error: uploadError } = await uploadServiceImage(user.id, serviceData.image_file);
+
+        if (uploadError) {
+          throw new Error(`Image upload failed: ${uploadError}`);
+        }
+
+        // Add the image URL to the service data
+        finalServiceData.image_url = publicUrl;
+
+        // Remove the image file from the data to be stored in the database
+        delete finalServiceData.image_file;
+      }
+
       const { data, error } = await supabase
         .from('services')
-        .insert([serviceData])
+        .insert([finalServiceData])
         .select()
         .single();
 
@@ -248,6 +265,35 @@ export function UserProvider({ children }) {
     } catch (error) {
       console.error('Create service error:', error);
       return { data: null, error: error.message };
+    }
+  };
+
+  // Upload service image to Supabase storage
+  const uploadServiceImage = async (userId, file) => {
+    try {
+      // Generate a unique filename using the user ID and timestamp
+      const fileName = `services/${userId}/${Date.now()}_${file.name}`;
+
+      const { data, error } = await supabase
+        .storage
+        .from('service-images')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
+
+      if (error) throw error;
+
+      // Get the public URL of the uploaded image
+      const { data: { publicUrl } } = supabase
+        .storage
+        .from('service-images')
+        .getPublicUrl(fileName);
+
+      return { publicUrl, error: null };
+    } catch (error) {
+      console.error('Upload service image error:', error);
+      return { publicUrl: null, error: error.message };
     }
   };
 
@@ -319,6 +365,7 @@ export function UserProvider({ children }) {
     getUserServices,
     updateService,
     deleteService,
+    uploadServiceImage,
   };
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;

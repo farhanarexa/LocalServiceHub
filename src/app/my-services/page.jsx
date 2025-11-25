@@ -122,7 +122,7 @@ function MyServicesContent() {
               <Plus className="h-8 w-8 text-foreground/50" />
             </div>
             <h3 className="text-xl font-semibold mb-2">No services yet</h3>
-            <p className="text-muted-foreground mb-4">You haven't listed any services yet</p>
+            <p className="text-muted-foreground mb-4">You haven&apos;t listed any services yet</p>
             <Link href="/services/create" className="inline-block bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors">
               Create your first service
             </Link>
