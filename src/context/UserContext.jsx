@@ -350,6 +350,144 @@ export function UserProvider({ children }) {
     }
   };
 
+  // Create a booking for a service
+  const createServiceBooking = async (bookingData) => {
+    try {
+      // First, get the service to get the provider ID
+      const { data: serviceData } = await supabase
+        .from('services')
+        .select('user_id')
+        .eq('id', bookingData.service_id)
+        .single();
+
+      if (!serviceData) {
+        throw new Error('Service not found');
+      }
+
+      const fullBookingData = {
+        ...bookingData,
+        service_provider_id: serviceData.user_id
+      };
+
+      const { data, error } = await supabase
+        .from('bookings')
+        .insert([fullBookingData])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      return { data, error: null };
+    } catch (error) {
+      console.error('Create service booking error:', error);
+      return { data: null, error: error.message };
+    }
+  };
+
+  // Get user's bookings
+  const getUserBookings = async (userId) => {
+    try {
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('*')
+        .eq('user_id', userId)
+        .order('booking_date', { ascending: false });
+
+      if (error) throw error;
+
+      // If we need service details, fetch them separately to avoid complex joins
+      if (data && data.length > 0) {
+        const serviceIds = data.map(booking => booking.service_id);
+        const { data: servicesData, error: servicesError } = await supabase
+          .from('services')
+          .select('id, name, price, category')
+          .in('id', serviceIds);
+
+        if (!servicesError && servicesData) {
+          // Add service details to each booking
+          const bookingsWithServices = data.map(booking => {
+            const service = servicesData.find(s => s.id === booking.service_id);
+            return {
+              ...booking,
+              services: service || null
+            };
+          });
+
+          return { data: bookingsWithServices, error: null };
+        }
+      }
+
+      // Return bookings without service details if service fetch fails
+      return { data, error: null };
+    } catch (error) {
+      console.error('Get user bookings error:', error);
+      return { data: null, error: error.message };
+    }
+  };
+
+  // Get service provider's bookings
+  const getProviderBookings = async (providerId) => {
+    try {
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('*')
+        .eq('service_provider_id', providerId)
+        .order('booking_date', { ascending: false });
+
+      if (error) throw error;
+
+      // If we need user details, fetch them separately to avoid complex joins
+      if (data && data.length > 0) {
+        const userIds = data.map(booking => booking.user_id);
+        const { data: usersData, error: usersError } = await supabase
+          .from('users')
+          .select('id, email')
+          .in('id', userIds);
+
+        if (!usersError && usersData) {
+          // Add user details to each booking
+          const bookingsWithUsers = data.map(booking => {
+            const user = usersData.find(u => u.id === booking.user_id);
+            return {
+              ...booking,
+              user: user || null
+            };
+          });
+
+          return { data: bookingsWithUsers, error: null };
+        }
+      }
+
+      // Return bookings without user details if user fetch fails
+      return { data, error: null };
+    } catch (error) {
+      console.error('Get provider bookings error:', error);
+      return { data: null, error: error.message };
+    }
+  };
+
+  // Update booking status
+  const updateBookingStatus = async (bookingId, status) => {
+    try {
+      const { data, error } = await supabase
+        .from('bookings')
+        .update({
+          booking_status: status,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', bookingId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      return { data, error: null };
+    } catch (error) {
+      console.error('Update booking status error:', error);
+      return { data: null, error: error.message };
+    }
+  };
+
   // Update a service
   const updateService = async (serviceId, serviceData) => {
     try {
@@ -401,6 +539,10 @@ export function UserProvider({ children }) {
     getUserServices,
     getAllServices,
     getServiceById,
+    createServiceBooking,
+    getUserBookings,
+    getProviderBookings,
+    updateBookingStatus,
     updateService,
     deleteService,
     uploadServiceImage,

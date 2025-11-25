@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { Suspense, useState, useEffect, use as ReactUse } from 'react';
 import { useUser } from '@/context/UserContext';
+import BookingModal from '@/components/BookingModal';
 
 // Component to handle the service detail logic
 function ServiceDetailContent({ params }) {
@@ -13,7 +14,8 @@ function ServiceDetailContent({ params }) {
   const [service, setService] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const { getServiceById } = useUser();
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const { user, getServiceById, createServiceBooking } = useUser();
 
   useEffect(() => {
     if (!serviceId || isNaN(serviceId)) {
@@ -223,7 +225,17 @@ function ServiceDetailContent({ params }) {
                   </div>
                 </div>
 
-                <button className="mt-6 w-full bg-primary text-primary-foreground py-3 rounded-lg hover:bg-primary/90 font-medium transition">
+                <button
+                  className="mt-6 w-full bg-primary text-primary-foreground py-3 rounded-lg hover:bg-primary/90 font-medium transition"
+                  onClick={() => {
+                    if (user) {
+                      setIsBookingModalOpen(true);
+                    } else {
+                      // Redirect to login if not authenticated
+                      window.location.href = '/login';
+                    }
+                  }}
+                >
                   Book This Service
                 </button>
                 <p className="text-center text-sm text-muted-foreground mt-3">
@@ -234,6 +246,20 @@ function ServiceDetailContent({ params }) {
           </div>
         </div>
       </div>
+
+      {/* Booking Modal */}
+      {service && (
+        <BookingModal
+          service={service}
+          isOpen={isBookingModalOpen}
+          onClose={() => setIsBookingModalOpen(false)}
+          onBookingSuccess={() => {
+            // Show success message or handle booking confirmation
+            // In a real app, you might want to show a toast notification
+            console.log('Booking confirmed! The service provider will contact you soon.');
+          }}
+        />
+      )}
     </div>
   );
 }

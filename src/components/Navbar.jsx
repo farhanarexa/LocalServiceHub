@@ -140,6 +140,13 @@ export default function Navbar() {
                   >
                     My Services
                   </Link>
+                  <Link
+                    href="/my-bookings"
+                    className="block px-4 py-2 hover:bg-accent transition-colors"
+                    onClick={() => setIsUserMenuOpen(false)}
+                  >
+                    My Bookings
+                  </Link>
                   <button
                     onClick={async () => {
                       await logout();
