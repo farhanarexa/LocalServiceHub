@@ -1,70 +1,8 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useUser } from '@/context/UserContext';
 import ServiceCard from '@/components/ServiceCard';
-
-const services = [
-  {
-    id: 1,
-    name: 'Plumbing Repair',
-    category: 'Home Services',
-    provider: 'John\'s Plumbing',
-    rating: 4.8,
-    price: '$50/hr',
-    description: 'Professional plumbing services for residential and commercial needs',
-    image: 'https://via.placeholder.com/300x200'
-  },
-  {
-    id: 2,
-    name: 'Computer Repair',
-    category: 'Tech Support',
-    provider: 'TechFix Solutions',
-    rating: 4.9,
-    price: '$75/hr',
-    description: 'Expert computer repair and technical support services',
-    image: 'https://via.placeholder.com/300x200'
-  },
-  {
-    id: 3,
-    name: 'Cleaning Service',
-    category: 'Home Services',
-    provider: 'Sparkle Cleaners',
-    rating: 4.7,
-    price: '$35/hr',
-    description: 'Thorough cleaning services for homes and offices',
-    image: 'https://via.placeholder.com/300x200'
-  },
-  {
-    id: 4,
-    name: 'Tutoring',
-    category: 'Education',
-    provider: 'EduCare Tutors',
-    rating: 4.9,
-    price: '$40/hr',
-    description: 'Personalized tutoring for all academic subjects',
-    image: 'https://via.placeholder.com/300x200'
-  },
-  {
-    id: 5,
-    name: 'Electrical Work',
-    category: 'Home Services',
-    provider: 'PowerPro Electric',
-    rating: 4.6,
-    price: '$60/hr',
-    description: 'Professional electrical installation and repair',
-    image: 'https://via.placeholder.com/300x200'
-  },
-  {
-    id: 6,
-    name: 'Pet Grooming',
-    category: 'Personal Care',
-    provider: 'Furry Friends Care',
-    rating: 4.8,
-    price: '$30/hr',
-    description: 'Professional pet grooming and care services',
-    image: 'https://via.placeholder.com/300x200'
-  }
-];
 
 const categories = [
   'All Services',
@@ -75,17 +13,41 @@ const categories = [
   'Personal Care',
   'Transportation',
   'Food & Dining',
-  'Entertainment'
+  'Entertainment',
+  'Other'
 ];
 
 export default function ServicesPage() {
   const [selectedCategory, setSelectedCategory] = useState('All Services');
   const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [services, setServices] = useState([]);
+  const { getAllServices } = useUser();
+
+  useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        setLoading(true);
+        const result = await getAllServices();
+        if (result.error) {
+          console.error('Error fetching services:', result.error);
+        } else {
+          setServices(result.data || []);
+        }
+      } catch (error) {
+        console.error('Error in fetchServices:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchServices();
+  }, []);
 
   const filteredServices = services.filter(service => {
     const matchesCategory = selectedCategory === 'All Services' || service.category === selectedCategory;
     const matchesSearch = service.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          service.provider.toLowerCase().includes(searchQuery.toLowerCase());
+                          service.description.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
 
@@ -137,6 +99,7 @@ export default function ServicesPage() {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full pl-10 pr-4 py-3 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition"
+                    disabled={loading}
                   />
                   <svg
                     className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground"
@@ -157,19 +120,41 @@ export default function ServicesPage() {
 
               <div>
                 <h2 className="text-2xl font-semibold mb-6">
-                  {selectedCategory} ({filteredServices.length} services)
+                  {selectedCategory} ({loading ? '...' : filteredServices.length} services)
                 </h2>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                  {filteredServices.map((service) => (
-                    <ServiceCard key={service.id} service={service} />
-                  ))}
-                </div>
-
-                {filteredServices.length === 0 && (
-                  <div className="text-center py-12">
-                    <p className="text-muted-foreground">No services found matching your criteria.</p>
+                {loading ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    {[1, 2, 3, 4, 5, 6].map((item) => (
+                      <div key={item} className="bg-card rounded-xl overflow-hidden shadow-lg border border-border animate-pulse">
+                        <div className="h-48 bg-muted"></div>
+                        <div className="p-6">
+                          <div className="h-4 bg-muted rounded w-3/4 mb-3"></div>
+                          <div className="h-6 bg-muted rounded w-1/2 mb-2"></div>
+                          <div className="h-4 bg-muted rounded w-full mb-2"></div>
+                          <div className="h-4 bg-muted rounded w-2/3 mb-4"></div>
+                          <div className="flex justify-between items-center">
+                            <div className="h-6 bg-muted rounded w-1/4"></div>
+                            <div className="h-4 bg-muted rounded w-1/6"></div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                      {filteredServices.map((service) => (
+                        <ServiceCard key={service.id} service={service} />
+                      ))}
+                    </div>
+
+                    {filteredServices.length === 0 && (
+                      <div className="text-center py-12">
+                        <p className="text-muted-foreground">No services found matching your criteria.</p>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>

@@ -314,6 +314,42 @@ export function UserProvider({ children }) {
     }
   };
 
+  // Get all services
+  const getAllServices = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('services')
+        .select('*')
+        .eq('status', 'active'); // Only fetch active services
+
+      if (error) throw error;
+
+      return { data, error: null };
+    } catch (error) {
+      console.error('Get all services error:', error);
+      return { data: null, error: error.message };
+    }
+  };
+
+  // Get a single service by ID
+  const getServiceById = async (serviceId) => {
+    try {
+      const { data, error } = await supabase
+        .from('services')
+        .select('*')
+        .eq('id', serviceId)
+        .eq('status', 'active')
+        .single();
+
+      if (error) throw error;
+
+      return { data, error: null };
+    } catch (error) {
+      console.error('Get service by ID error:', error);
+      return { data: null, error: error.message };
+    }
+  };
+
   // Update a service
   const updateService = async (serviceId, serviceData) => {
     try {
@@ -363,6 +399,8 @@ export function UserProvider({ children }) {
     deleteProfileImage,
     createService,
     getUserServices,
+    getAllServices,
+    getServiceById,
     updateService,
     deleteService,
     uploadServiceImage,
