@@ -150,16 +150,16 @@ function MyBookingsContent() {
                 <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-4">
                   <div>
                     <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-xl font-semibold">{booking.services?.name || 'Service'}</h3>
+                      <h3 className="text-xl font-semibold">{booking.service?.name || 'Service'}</h3>
                       <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded ${getStatusColor(booking.booking_status)}`}>
                         {getStatusIcon(booking.booking_status)}
                         {booking.booking_status.charAt(0).toUpperCase() + booking.booking_status.slice(1)}
                       </span>
                     </div>
-                    <p className="text-muted-foreground text-sm">{booking.services?.category}</p>
+                    <p className="text-muted-foreground text-sm">{booking.service?.category || 'Uncategorized'}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-lg font-bold text-primary">{booking.services?.price}</p>
+                    <p className="text-lg font-bold text-primary">{booking.service?.price || 'Price N/A'}</p>
                     <div className="flex items-center text-sm text-muted-foreground mt-1">
                       <Calendar className="h-4 w-4 mr-1" />
                       {new Date(booking.booking_date).toLocaleString()}

@@ -364,9 +364,36 @@ export function UserProvider({ children }) {
         throw new Error('Service not found');
       }
 
+      // Get current user's profile information from the profiles table to include in booking
+      let user_email = null;
+      let user_full_name = null;
+      let user_phone = null;
+      let user_location = null;
+
+      try {
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('email, name, phone, location')
+          .eq('id', bookingData.user_id)
+          .single();
+
+        if (!profileError && profileData) {
+          user_email = profileData.email || null;
+          user_full_name = profileData.name || null; // Use 'name' not 'full_name' as per schema
+          user_phone = profileData.phone || null;
+          user_location = profileData.location || null;
+        }
+      } catch (err) {
+        console.warn('Could not fetch user profile for booking:', err);
+      }
+
       const fullBookingData = {
         ...bookingData,
-        service_provider_id: serviceData.user_id
+        service_provider_id: serviceData.user_id,
+        user_email,
+        user_full_name,
+        user_phone,
+        user_location
       };
 
       const { data, error } = await supabase
@@ -387,38 +414,44 @@ export function UserProvider({ children }) {
   // Get user's bookings
   const getUserBookings = async (userId) => {
     try {
-      const { data, error } = await supabase
+      // First, get all bookings for the user
+      const { data: bookingsData, error: bookingsError } = await supabase
         .from('bookings')
         .select('*')
         .eq('user_id', userId)
         .order('booking_date', { ascending: false });
 
-      if (error) throw error;
+      if (bookingsError) throw bookingsError;
 
-      // If we need service details, fetch them separately to avoid complex joins
-      if (data && data.length > 0) {
-        const serviceIds = data.map(booking => booking.service_id);
+      if (bookingsData && bookingsData.length > 0) {
+        // Extract unique service IDs to fetch service details
+        const serviceIds = [...new Set(bookingsData.map(booking => booking.service_id))];
+
+        // Fetch service details in a single query
         const { data: servicesData, error: servicesError } = await supabase
           .from('services')
           .select('id, name, price, category')
           .in('id', serviceIds);
 
-        if (!servicesError && servicesData) {
-          // Add service details to each booking
-          const bookingsWithServices = data.map(booking => {
-            const service = servicesData.find(s => s.id === booking.service_id);
-            return {
-              ...booking,
-              services: service || null
-            };
-          });
-
-          return { data: bookingsWithServices, error: null };
+        if (servicesError) {
+          console.error('Error fetching service data:', servicesError);
+          // Still return bookings even if service data fetch fails
+          return { data: bookingsData, error: null };
         }
+
+        // Add service data to each booking
+        const bookingsWithServices = bookingsData.map(booking => {
+          const service = servicesData.find(s => s.id === booking.service_id);
+          return {
+            ...booking,
+            service: service || null // Changed from 'services' to 'service' to match the service requests page
+          };
+        });
+
+        return { data: bookingsWithServices, error: null };
       }
 
-      // Return bookings without service details if service fetch fails
-      return { data, error: null };
+      return { data: bookingsData || [], error: null };
     } catch (error) {
       console.error('Get user bookings error:', error);
       return { data: null, error: error.message };
@@ -428,38 +461,57 @@ export function UserProvider({ children }) {
   // Get service provider's bookings
   const getProviderBookings = async (providerId) => {
     try {
-      const { data, error } = await supabase
+      // Get bookings with service info using a simple approach that should work
+      const { data: bookingsData, error: bookingsError } = await supabase
         .from('bookings')
         .select('*')
         .eq('service_provider_id', providerId)
         .order('booking_date', { ascending: false });
 
-      if (error) throw error;
+      if (bookingsError) throw bookingsError;
 
-      // If we need user details, fetch them separately to avoid complex joins
-      if (data && data.length > 0) {
-        const userIds = data.map(booking => booking.user_id);
-        const { data: usersData, error: usersError } = await supabase
-          .from('users')
-          .select('id, email')
-          .in('id', userIds);
+      if (bookingsData && bookingsData.length > 0) {
+        // Get service details
+        const serviceIds = [...new Set(bookingsData.map(booking => booking.service_id))];
+        let servicesData = [];
 
-        if (!usersError && usersData) {
-          // Add user details to each booking
-          const bookingsWithUsers = data.map(booking => {
-            const user = usersData.find(u => u.id === booking.user_id);
-            return {
-              ...booking,
-              user: user || null
-            };
-          });
+        if (serviceIds.length > 0) {
+          const { data: servicesResult, error: servicesError } = await supabase
+            .from('services')
+            .select('id, name, price, category')
+            .in('id', serviceIds);
 
-          return { data: bookingsWithUsers, error: null };
+          if (!servicesError) {
+            servicesData = servicesResult;
+          }
         }
+
+        // Format bookings with service info and stored user info
+        const bookingsWithDetails = bookingsData.map(booking => {
+          const service = servicesData.find(s => s.id === booking.service_id) || null;
+
+          // Create a user object using the information stored in the booking
+          // or available through other means
+          const userObject = {
+            email: booking.user_email || 'Email not available',
+            user_metadata: {
+              full_name: booking.user_full_name || null,
+              phone: booking.user_phone || null,
+              location: booking.user_location || null
+            }
+          };
+
+          return {
+            ...booking,
+            service,
+            user: userObject
+          };
+        });
+
+        return { data: bookingsWithDetails, error: null };
       }
 
-      // Return bookings without user details if user fetch fails
-      return { data, error: null };
+      return { data: bookingsData || [], error: null };
     } catch (error) {
       console.error('Get provider bookings error:', error);
       return { data: null, error: error.message };

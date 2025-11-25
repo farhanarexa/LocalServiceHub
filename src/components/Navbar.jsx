@@ -141,6 +141,13 @@ export default function Navbar() {
                     My Services
                   </Link>
                   <Link
+                    href="/service-requests"
+                    className="block px-4 py-2 hover:bg-accent transition-colors"
+                    onClick={() => setIsUserMenuOpen(false)}
+                  >
+                    Service Requests
+                  </Link>
+                  <Link
                     href="/my-bookings"
                     className="block px-4 py-2 hover:bg-accent transition-colors"
                     onClick={() => setIsUserMenuOpen(false)}
