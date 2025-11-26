@@ -300,14 +300,59 @@ export function UserProvider({ children }) {
   // Get user's services
   const getUserServices = async (userId) => {
     try {
-      const { data, error } = await supabase
+      // First, get user's services
+      const { data: services, error: servicesError } = await supabase
         .from('services')
         .select('*')
         .eq('user_id', userId);
 
-      if (error) throw error;
+      if (servicesError) throw servicesError;
 
-      return { data, error: null };
+      if (!services || services.length === 0) {
+        return { data: [], error: null };
+      }
+
+      // Extract all service IDs to get their average ratings
+      const serviceIds = services.map(service => service.id);
+
+      // Get average ratings for all services in a single query
+      const { data: ratingsData, error: ratingsError } = await supabase
+        .from('reviews')
+        .select('service_id, rating')
+        .in('service_id', serviceIds);
+
+      if (ratingsError) {
+        console.error('Error fetching ratings:', ratingsError);
+        // If ratings query fails, return services without ratings
+        return { data: services, error: null };
+      }
+
+      // Calculate average rating for each service
+      const avgRatings = {};
+      if (ratingsData && ratingsData.length > 0) {
+        // Group all reviews by service_id
+        const reviewsByService = ratingsData.reduce((acc, review) => {
+          if (!acc[review.service_id]) {
+            acc[review.service_id] = [];
+          }
+          acc[review.service_id].push(review.rating);
+          return acc;
+        }, {});
+
+        // Calculate average rating for each service
+        Object.entries(reviewsByService).forEach(([serviceId, ratings]) => {
+          const avg = ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length;
+          avgRatings[serviceId] = parseFloat(avg.toFixed(1)); // Round to 1 decimal place
+        });
+      }
+
+      // Add average rating to each service
+      const servicesWithRatings = services.map(service => ({
+        ...service,
+        rating: avgRatings[service.id] || 0 // Default to 0 if no reviews
+      }));
+
+      return { data: servicesWithRatings, error: null };
     } catch (error) {
       console.error('Get user services error:', error);
       return { data: null, error: error.message };

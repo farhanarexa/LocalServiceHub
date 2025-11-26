@@ -3,19 +3,9 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useUser } from '@/context/UserContext';
 import ServiceCard from '@/components/ServiceCard';
+import { serviceCategories } from '@/utils/categories';
 
-const categories = [
-  'All Services',
-  'Home Services',
-  'Tech Support',
-  'Education',
-  'Healthcare',
-  'Personal Care',
-  'Transportation',
-  'Food & Dining',
-  'Entertainment',
-  'Other'
-];
+const allCategories = ['All Services', ...serviceCategories];
 
 export default function ServicesPage() {
   const [selectedCategory, setSelectedCategory] = useState('All Services');
@@ -72,7 +62,7 @@ export default function ServicesPage() {
                 <div className="mb-6">
                   <h3 className="font-medium mb-3">Categories</h3>
                   <div className="space-y-2">
-                    {categories.map(category => (
+                    {allCategories.map(category => (
                       <button
                         key={category}
                         onClick={() => setSelectedCategory(category)}

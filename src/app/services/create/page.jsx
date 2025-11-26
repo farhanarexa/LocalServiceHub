@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useUser } from '@/context/UserContext';
 import { MapPin, DollarSign, Tag, Calendar, Info, AlertCircle, CheckCircle, Upload } from 'lucide-react';
 import PrivateRoute from '@/components/PrivateRoute';
+import { serviceCategories } from '@/utils/categories';
 
 export default function CreateServicePage() {
   return (
@@ -35,17 +36,7 @@ function CreateServiceContent() {
     image_file: null
   });
 
-  const categories = [
-    'Home Services',
-    'Tech Support',
-    'Education',
-    'Healthcare',
-    'Personal Care',
-    'Transportation',
-    'Food & Dining',
-    'Entertainment',
-    'Other'
-  ];
+  const categories = serviceCategories;
 
   const priceTypes = [
     { value: 'hourly', label: 'Per Hour' },
