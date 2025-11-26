@@ -689,12 +689,10 @@ export function UserProvider({ children }) {
   // Update a review
   const updateReview = async (reviewId, reviewData) => {
     try {
+      // Don't set updated_at in the review data - let the DB handle it if it has a trigger
       const { data, error } = await supabase
         .from('reviews')
-        .update({
-          ...reviewData,
-          updated_at: new Date().toISOString()
-        })
+        .update(reviewData)
         .eq('id', reviewId)
         .select()
         .single();
@@ -722,6 +720,32 @@ export function UserProvider({ children }) {
     } catch (error) {
       console.error('Delete review error:', error);
       return { error: error.message };
+    }
+  };
+
+  // Check if user has already reviewed a specific booking
+  const getUserBookingReview = async (bookingId, userId) => {
+    try {
+      const { data, error } = await supabase
+        .from('reviews')
+        .select('*')
+        .eq('booking_id', bookingId)
+        .eq('reviewer_id', userId)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        // PGRST116 means no rows returned - this is expected when no review exists
+        throw error;
+      }
+
+      return { data, error: null };
+    } catch (error) {
+      if (error.code === 'PGRST116') {
+        // No review exists for this booking by this user
+        return { data: null, error: null };
+      }
+      console.error('Get user booking review error:', error);
+      return { data: null, error: error.message };
     }
   };
 
@@ -795,6 +819,12 @@ export function UserProvider({ children }) {
           throw new Error('Booking not found');
         }
 
+        // Check if user already reviewed this booking
+        const existingReview = await getUserBookingReview(reviewData.booking_id, user?.id);
+        if (existingReview.data) {
+          throw new Error('You have already reviewed this booking. You can edit your existing review.');
+        }
+
         const fullReviewData = {
           ...reviewData,
           service_id: bookingData.service_id,
@@ -821,6 +851,7 @@ export function UserProvider({ children }) {
     getUserReviews,
     updateReview,
     deleteReview,
+    getUserBookingReview,
     updateService,
     deleteService,
     uploadServiceImage,
