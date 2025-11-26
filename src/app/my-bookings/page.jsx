@@ -16,34 +16,46 @@ export default function MyBookingsPage() {
 }
 
 function MyBookingsContent() {
-  const { user, getUserBookings } = useUser();
+  const { user, getUserBookings, getUserBookingReview } = useUser();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [selectedBookingForReview, setSelectedBookingForReview] = useState(null);
+  const [bookingReviews, setBookingReviews] = useState({});
+
+  const fetchBookings = async () => {
+    if (user) {
+      try {
+        setLoading(true);
+        const result = await getUserBookings(user.id);
+
+        if (result.error) {
+          setError(result.error);
+        } else {
+          const bookingsData = result.data || [];
+          setBookings(bookingsData);
+
+          // Fetch review status for each completed booking
+          const reviews = {};
+          for (const booking of bookingsData) {
+            if (booking.booking_status === 'completed') {
+              const reviewResult = await getUserBookingReview(booking.id, user.id);
+              reviews[booking.id] = reviewResult.data;
+            }
+          }
+          setBookingReviews(reviews);
+        }
+      } catch (err) {
+        setError(err.message);
+        console.error('Error fetching bookings:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
 
   useEffect(() => {
-    const fetchBookings = async () => {
-      if (user) {
-        try {
-          setLoading(true);
-          const result = await getUserBookings(user.id);
-          
-          if (result.error) {
-            setError(result.error);
-          } else {
-            setBookings(result.data || []);
-          }
-        } catch (err) {
-          setError(err.message);
-          console.error('Error fetching bookings:', err);
-        } finally {
-          setLoading(false);
-        }
-      }
-    };
-
     fetchBookings();
   }, [user]);
 
@@ -73,6 +85,29 @@ function MyBookingsContent() {
       default:
         return <AlertCircle className="h-4 w-4 text-yellow-500" />;
     }
+  };
+
+  const getReviewButtonText = (bookingId) => {
+    const review = bookingReviews[bookingId];
+    if (!review) {
+      return 'Write Review';
+    }
+    // Check if review is within 24 hours (as done in the modal)
+    const reviewDate = new Date(review.created_at);
+    const currentTime = new Date();
+    const timeDiff = currentTime - reviewDate;
+    const hoursDiff = timeDiff / (1000 * 60 * 60);
+    return hoursDiff <= 24 ? 'Edit Review' : 'Review Submitted';
+  };
+
+  const isReviewEditable = (bookingId) => {
+    const review = bookingReviews[bookingId];
+    if (!review) return true; // No review yet, so can write one
+    const reviewDate = new Date(review.created_at);
+    const currentTime = new Date();
+    const timeDiff = currentTime - reviewDate;
+    const hoursDiff = timeDiff / (1000 * 60 * 60);
+    return hoursDiff <= 24; // Review is editable if within 24 hours
   };
 
   if (loading) {
@@ -141,7 +176,7 @@ function MyBookingsContent() {
               <Calendar className="h-8 w-8 text-foreground/50" />
             </div>
             <h3 className="text-xl font-semibold mb-2">No bookings yet</h3>
-            <p className="text-muted-foreground mb-4">You haven't booked any services yet</p>
+            <p className="text-muted-foreground mb-4">You haven&apos;t booked any services yet</p>
             <Link href="/services" className="inline-block bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors">
               Browse Services
             </Link>
@@ -173,7 +208,7 @@ function MyBookingsContent() {
                 {booking.booking_notes && (
                   <div className="mb-4 p-4 bg-muted rounded-lg">
                     <div className="flex items-start">
-                      <MessageSquare className="h-4 w-4 mr-2 mt-0.5 flex-shrink-0 text-muted-foreground" />
+                      <MessageSquare className="h-4 w-4 mr-2 mt-0.5 shrink-0 text-muted-foreground" />
                       <div>
                         <p className="text-sm font-medium text-muted-foreground mb-1">Notes</p>
                         <p className="text-sm">{booking.booking_notes}</p>
@@ -187,17 +222,22 @@ function MyBookingsContent() {
                     <Clock className="h-4 w-4 mr-2" />
                     Booked: {new Date(booking.created_at).toLocaleDateString()}
                   </div>
-                  
+
                   {/* Review button for completed bookings */}
                   {booking.booking_status === 'completed' && (
-                    <button 
+                    <button
                       onClick={() => {
                         setSelectedBookingForReview(booking);
                         setIsReviewModalOpen(true);
                       }}
-                      className="ml-auto px-3 py-1 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-sm"
+                      disabled={!isReviewEditable(booking.id)}
+                      className={`ml-auto px-3 py-1 rounded-lg transition-colors text-sm ${
+                        isReviewEditable(booking.id)
+                          ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                          : 'bg-muted text-muted-foreground cursor-not-allowed'
+                      }`}
                     >
-                      Write Review
+                      {getReviewButtonText(booking.id)}
                     </button>
                   )}
                 </div>
@@ -206,7 +246,7 @@ function MyBookingsContent() {
           </div>
         )}
       </div>
-      
+
       {/* Review Modal */}
       {isReviewModalOpen && selectedBookingForReview && (
         <ReviewModal
@@ -217,7 +257,8 @@ function MyBookingsContent() {
             setSelectedBookingForReview(null);
           }}
           onReviewSuccess={() => {
-            // Optionally refresh the bookings list to update review status
+            // Refresh the bookings list to update review status
+            fetchBookings();
             console.log('Review submitted successfully!');
           }}
         />
