@@ -3,7 +3,9 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { Suspense, useState, useEffect, use as ReactUse } from 'react';
 import { useUser } from '@/context/UserContext';
+// import { supabase } from '@/utils/supabaseClient';
 import BookingModal from '@/components/BookingModal';
+import { supabase } from '../../../../utils/supabaseClient';
 
 // Component to handle the service detail logic
 function ServiceDetailContent({ params }) {
@@ -12,10 +14,11 @@ function ServiceDetailContent({ params }) {
   const { id } = paramsValue;
   const serviceId = Number(id);
   const [service, setService] = useState(null);
+  const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
-  const { user, getServiceById, createServiceBooking } = useUser();
+  const { user, getServiceById, createServiceBooking, getServiceReviews } = useUser();
 
   useEffect(() => {
     if (!serviceId || isNaN(serviceId)) {
@@ -23,25 +26,77 @@ function ServiceDetailContent({ params }) {
       return;
     }
 
-    const fetchService = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
-        const result = await getServiceById(serviceId);
-        if (result.error) {
-          setError(result.error);
-          console.error('Error fetching service:', result.error);
+
+        // Fetch service
+        const serviceResult = await getServiceById(serviceId);
+        if (serviceResult.error) {
+          throw new Error(serviceResult.error);
+        }
+        setService(serviceResult.data);
+
+        // Fetch reviews for this service
+        const reviewsResult = await getServiceReviews(serviceId);
+        if (reviewsResult.error) {
+          console.error('Error fetching reviews:', reviewsResult.error);
+          setReviews([]); // Set empty reviews but don't throw error as service is more important
         } else {
-          setService(result.data);
+          const reviewsData = reviewsResult.data || [];
+
+          // Fetch user information for each reviewer to get their name and avatar
+          const reviewsWithUserInfo = await Promise.all(reviewsData.map(async (review) => {
+            try {
+              // Try to get user info from profiles table
+              const { data: profileData, error: profileError } = await supabase
+                .from('profiles')
+                .select('name, avatar_url')
+                .eq('id', review.reviewer_id)
+                .single();
+
+              if (!profileError && profileData) {
+                return {
+                  ...review,
+                  reviewer_info: {
+                    name: profileData.name || 'Customer',
+                    avatar_url: profileData.avatar_url
+                  }
+                };
+              } else {
+                // If profile not found, just return the review with default customer name
+                return {
+                  ...review,
+                  reviewer_info: {
+                    name: 'Customer',
+                    avatar_url: null
+                  }
+                };
+              }
+            } catch (err) {
+              console.error('Error fetching reviewer info:', err);
+              // Return review with default values
+              return {
+                ...review,
+                reviewer_info: {
+                  name: 'Customer',
+                  avatar_url: null
+                }
+              };
+            }
+          }));
+
+          setReviews(reviewsWithUserInfo);
         }
       } catch (err) {
         setError(err.message);
-        console.error('Error in fetchService:', err);
+        console.error('Error in fetchData:', err);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchService();
+    fetchData();
   }, [serviceId]);
 
   if (isNaN(serviceId)) {
@@ -165,8 +220,20 @@ function ServiceDetailContent({ params }) {
                   </span>
                   <div className="flex items-center gap-1">
                     <span className="text-yellow-500">★</span>
-                    <span className="font-medium">{service.rating || 0}</span>
-                    <span className="text-muted-foreground">(0 reviews)</span>
+                    {/* Calculate average rating from reviews */}
+                    {reviews.length > 0 ? (
+                      <>
+                        <span className="font-medium">
+                          {Number((reviews.reduce((acc, review) => acc + review.rating, 0) / reviews.length).toFixed(1))}
+                        </span>
+                        <span className="text-muted-foreground">({reviews.length} review{reviews.length !== 1 ? 's' : ''})</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="font-medium">{service.rating || 0}</span>
+                        <span className="text-muted-foreground">(0 reviews)</span>
+                      </>
+                    )}
                   </div>
                 </div>
                 <p className="text-muted-foreground mb-6">{displayDescription}</p>
@@ -180,8 +247,57 @@ function ServiceDetailContent({ params }) {
 
               <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
                 <h2 className="text-xl font-semibold mb-4">Reviews</h2>
-                <p className="text-muted-foreground">No reviews yet.</p>
-                <p className="text-sm text-muted-foreground mt-2">Be the first to review this service!</p>
+                {reviews.length > 0 ? (
+                  <div className="space-y-6">
+                    {reviews.map(review => (
+                      <div key={review.id} className="border-b border-border pb-6 last:border-0 last:pb-0">
+                        <div className="flex items-start gap-3 mb-2">
+                          <div className="flex-shrink-0">
+                            {review.reviewer_info?.avatar_url ? (
+                              <img
+                                src={review.reviewer_info.avatar_url}
+                                alt={review.reviewer_info.name}
+                                className="w-10 h-10 rounded-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                                <span className="text-sm font-medium">
+                                  {review.reviewer_info?.name?.charAt(0).toUpperCase() || 'C'}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex justify-between items-center">
+                              <h3 className="font-medium">{review.reviewer_info?.name || 'Customer'}</h3>
+                              <div className="flex items-center gap-1">
+                                {Array.from({ length: 5 }, (_, i) => (
+                                  <span
+                                    key={i}
+                                    className={`text-lg ${i < review.rating ? 'text-yellow-500' : 'text-muted-foreground'}`}
+                                  >
+                                    ★
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                            {review.review_text && (
+                              <p className="text-muted-foreground mt-1">{review.review_text}</p>
+                            )}
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {new Date(review.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div>
+                    <p className="text-muted-foreground">No reviews yet.</p>
+                    <p className="text-sm text-muted-foreground mt-2">Be the first to review this service!</p>
+                  </div>
+                )}
               </div>
             </div>
 

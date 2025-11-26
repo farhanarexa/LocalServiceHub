@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useUser } from '@/context/UserContext';
 import { Clock, MapPin, MessageSquare, Calendar, User, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import PrivateRoute from '@/components/PrivateRoute';
+import ReviewModal from '@/components/ReviewModal';
 
 export default function MyBookingsPage() {
   return (
@@ -19,6 +20,8 @@ function MyBookingsContent() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [selectedBookingForReview, setSelectedBookingForReview] = useState(null);
 
   useEffect(() => {
     const fetchBookings = async () => {
@@ -184,12 +187,41 @@ function MyBookingsContent() {
                     <Clock className="h-4 w-4 mr-2" />
                     Booked: {new Date(booking.created_at).toLocaleDateString()}
                   </div>
+                  
+                  {/* Review button for completed bookings */}
+                  {booking.booking_status === 'completed' && (
+                    <button 
+                      onClick={() => {
+                        setSelectedBookingForReview(booking);
+                        setIsReviewModalOpen(true);
+                      }}
+                      className="ml-auto px-3 py-1 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-sm"
+                    >
+                      Write Review
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
           </div>
         )}
       </div>
+      
+      {/* Review Modal */}
+      {isReviewModalOpen && selectedBookingForReview && (
+        <ReviewModal
+          booking={selectedBookingForReview}
+          isOpen={isReviewModalOpen}
+          onClose={() => {
+            setIsReviewModalOpen(false);
+            setSelectedBookingForReview(null);
+          }}
+          onReviewSuccess={() => {
+            // Optionally refresh the bookings list to update review status
+            console.log('Review submitted successfully!');
+          }}
+        />
+      )}
     </div>
   );
 }

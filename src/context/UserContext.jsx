@@ -540,6 +540,101 @@ export function UserProvider({ children }) {
     }
   };
 
+  // Create a review for a completed booking - will be updated in the return
+
+  // Get reviews for a service
+  const getServiceReviews = async (serviceId) => {
+    try {
+      const { data, error } = await supabase
+        .from('reviews')
+        .select('*')
+        .eq('service_id', serviceId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      return { data, error: null };
+    } catch (error) {
+      console.error('Get service reviews error:', error);
+      return { data: null, error: error.message };
+    }
+  };
+
+  // Get reviews for a service provider
+  const getProviderReviews = async (providerId) => {
+    try {
+      const { data, error } = await supabase
+        .from('reviews')
+        .select('*')
+        .eq('service_provider_id', providerId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      return { data, error: null };
+    } catch (error) {
+      console.error('Get provider reviews error:', error);
+      return { data: null, error: error.message };
+    }
+  };
+
+  // Get user's submitted reviews
+  const getUserReviews = async (userId) => {
+    try {
+      const { data, error } = await supabase
+        .from('reviews')
+        .select('*')
+        .eq('reviewer_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      return { data, error: null };
+    } catch (error) {
+      console.error('Get user reviews error:', error);
+      return { data: null, error: error.message };
+    }
+  };
+
+  // Update a review
+  const updateReview = async (reviewId, reviewData) => {
+    try {
+      const { data, error } = await supabase
+        .from('reviews')
+        .update({
+          ...reviewData,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', reviewId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      return { data, error: null };
+    } catch (error) {
+      console.error('Update review error:', error);
+      return { data: null, error: error.message };
+    }
+  };
+
+  // Delete a review
+  const deleteReview = async (reviewId) => {
+    try {
+      const { error } = await supabase
+        .from('reviews')
+        .delete()
+        .eq('id', reviewId);
+
+      if (error) throw error;
+
+      return { error: null };
+    } catch (error) {
+      console.error('Delete review error:', error);
+      return { error: error.message };
+    }
+  };
+
   // Update a service
   const updateService = async (serviceId, serviceData) => {
     try {
@@ -595,6 +690,47 @@ export function UserProvider({ children }) {
     getUserBookings,
     getProviderBookings,
     updateBookingStatus,
+    createReview: async (reviewData) => {
+      try {
+        // Get booking info to get service details
+        const { data: bookingData, error: bookingError } = await supabase
+          .from('bookings')
+          .select('service_id, service_provider_id')
+          .eq('id', reviewData.booking_id)
+          .single();
+
+        if (bookingError) throw bookingError;
+
+        if (!bookingData) {
+          throw new Error('Booking not found');
+        }
+
+        const fullReviewData = {
+          ...reviewData,
+          service_id: bookingData.service_id,
+          service_provider_id: bookingData.service_provider_id,
+          reviewer_id: user?.id  // Add the current user as the reviewer
+        };
+
+        const { data, error } = await supabase
+          .from('reviews')
+          .insert([fullReviewData])
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        return { data, error: null };
+      } catch (error) {
+        console.error('Create review error:', error);
+        return { data: null, error: error.message };
+      }
+    },
+    getServiceReviews,
+    getProviderReviews,
+    getUserReviews,
+    updateReview,
+    deleteReview,
     updateService,
     deleteService,
     uploadServiceImage,
