@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 
 export default function HeroSection() {
@@ -29,7 +30,12 @@ export default function HeroSection() {
         </div>
         <div className="md:w-1/2 flex justify-center">
           <div className="bg-muted border-2 border-dashed rounded-xl w-full h-96 md:h-[400px] flex items-center justify-center text-foreground/50">
-            Hero Image/Graphic
+           <Image
+              src="/image/hero2.webp"
+              alt="Hero Image"
+              width={400}
+              height={400}
+              className="w-full h-full object-cover" />
           </div>
         </div>
       </div>
