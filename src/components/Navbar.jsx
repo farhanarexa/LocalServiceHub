@@ -76,7 +76,9 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto h-full px-6 flex items-center justify-between w-full">
         {/* Logo and Name (hidden on small screens) */}
         <div className="flex items-center space-x-2">
-          <div className="bg-primary w-10 h-10 rounded-lg"></div>
+          <div className="w-10 h-10 rounded-lg">
+            <Image src="/image/logo2.png" alt="Logo" width={45} height={45} />
+          </div>
           <span className="text-2xl font-bold hidden sm:block">LocalServiceHub</span>
         </div>
 
